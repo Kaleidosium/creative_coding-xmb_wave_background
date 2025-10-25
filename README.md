@@ -42,7 +42,7 @@ The wave reacts dynamically depending on the color scheme of the user’s system
     - Navigate to the directory where you want to clone the repository.
     - Run the following command:
 
-```bash
+```
 git clone https://github.com/fchavonet/creative_coding-xmb_wave_background.git
 ```
 
