@@ -25,9 +25,9 @@ The wave reacts dynamically depending on the color scheme of the user’s system
 
 ## File Description
 
-| **FILE**     | **DESCRIPTION**                                     |
+|   **FILE**   | **DESCRIPTION**                                     |
 | :----------: | --------------------------------------------------- |
-| `assets`     | Contains the resources required for the repository. |
+|   `assets`   | Contains the resources required for the repository. |
 | `index.html` | Main HTML structure for the project.                |
 | `style.css`  | Styles and animations for the project.              |
 | `script.js`  | Behavior script for interactivity.                  |
@@ -38,9 +38,9 @@ The wave reacts dynamically depending on the color scheme of the user’s system
 ### Installation
 
 1. Clone this repository:
-    - Open your preferred Terminal.
-    - Navigate to the directory where you want to clone the repository.
-    - Run the following command:
+   - Open your preferred Terminal.
+   - Navigate to the directory where you want to clone the repository.
+   - Run the following command:
 
 ```
 git clone https://github.com/fchavonet/creative_coding-xmb_wave_background.git
@@ -52,7 +52,7 @@ git clone https://github.com/fchavonet/creative_coding-xmb_wave_background.git
 
 1. Open the `index.html` file in your web browser.
 
-You can also test the project online by clicking [here](https://fchavonet.github.io/creative_coding-xmb_wave_background/). 
+You can also test the project online by clicking [here](https://fchavonet.github.io/creative_coding-xmb_wave_background/).
 
 <p align="center">
     <picture>
@@ -62,10 +62,65 @@ You can also test the project online by clicking [here](https://fchavonet.github
     </picture>
 </p>
 
+## Customization
+
+The wave reads its settings from `window.XMBWaveConfig`. Set defaults before loading the script, tweak them live from the in-page settings panel (the sliders icon in the top-right), or call the public API at runtime. User changes made through the panel are persisted to `localStorage` and override author defaults on the next visit.
+
+### Defaults
+
+| Setting        |  Default  | Range / values                     | Description                               |
+| :------------- | :-------: | :--------------------------------- | :---------------------------------------- |
+| `color`        | `#4d4d4d` | any CSS hex color                  | Base color shared by all wave layers      |
+| `bgColorLight` | `#f5f5f5` | any CSS hex color                  | Background color used while in light mode |
+| `bgColorDark`  | `#020408` | any CSS hex color                  | Background color used while in dark mode  |
+| `speed`        |   `1.0`   | `0.1` – `3.0`                      | Global animation speed multiplier         |
+| `waveHeight`   |   `1.0`   | `0.1` – `2.0`                      | Global amplitude multiplier               |
+| `quality`      | `"auto"`  | `auto` / `low` / `medium` / `high` | Performance tier (see below)              |
+
+The background picker in the settings panel always targets the _currently active_ mode — toggle light/dark to recolor the other.
+
+### Author-set defaults (before script loads)
+
+```html
+<script>
+  window.XMBWaveConfig = { color: "#00aaff", speed: 1.5, waveHeight: 0.8 };
+</script>
+<script src="./script.js" defer></script>
+```
+
+### Runtime API
+
+```js
+XMBWave.updateConfig({ color: "#ff5500", speed: 2.0 });
+XMBWave.getConfig(); // current merged config
+XMBWave.getEffectiveTier(); // resolved tier in use: "low" | "medium" | "high"
+XMBWave.getDefaults();
+```
+
+## Performance
+
+The shader is rendered in one of three quality tiers; `quality: "auto"` picks one based on user-agent, `navigator.hardwareConcurrency`, and `navigator.deviceMemory`.
+
+| Tier   | Wave layers | DPR cap | Target FPS | Shader precision |
+| :----- | :---------: | :-----: | :--------: | :--------------: |
+| low    |      4      |   1.0   |     30     |     mediump      |
+| medium |      6      |   1.0   |     60     |     mediump      |
+| high   |      7      |   2.0   |     60     |      highp       |
+
+Additional optimisations are always on:
+
+- **DPR-aware sizing** so the GPU isn't rendering 4× pixels on Retina displays for the low/medium tiers.
+- **FPS cap** in the render loop — frames are skipped to hit the tier's target.
+- **Auto-downgrade watchdog**: with `quality: "auto"`, a sustained drop below 70% of target FPS for 3s steps the tier down one notch (one-way, no oscillation).
+- **Visibility pause** — `requestAnimationFrame` work stops while the tab is hidden, with `uTime` offset so the animation doesn't jump on return.
+- **Debounced resize** via a coalesced `requestAnimationFrame`.
+
+Append `?debug=1` to the URL to show a live FPS / tier indicator.
+
 ## What's Next?
 
-- Implement performance tuning (for lower-end devices).
-- Create a customizable version (color, speed, wave height).
+- [x] Implement performance tuning (for lower-end devices).
+- [x] Create a customizable version (color, speed, wave height).
 
 ## Thanks
 
@@ -75,4 +130,5 @@ You can also test the project online by clicking [here](https://fchavonet.github
 ## Author(s)
 
 **Fabien CHAVONET**
+
 - GitHub: [@fchavonet](https://github.com/fchavonet)
