@@ -74,6 +74,7 @@ a {
   justify-content: center;
   align-items: center;
   font-size: 1rem;
+  color: inherit;
   border: none;
   border-radius: 0.5rem;
   background-color: transparent;
