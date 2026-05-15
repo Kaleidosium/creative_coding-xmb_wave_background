@@ -1,6 +1,6 @@
-/*********************
+/**********************
  * RESPONSIVE WARNING *
- *********************/
+ **********************/
 
 const responsiveWarning = document.getElementById("responsive-warning");
 const responsiveDesign = true;
@@ -9,9 +9,9 @@ if (!responsiveDesign && window.innerWidth <= 768) {
   responsiveWarning.classList.add("show");
 }
 
-/**********************
+/***********************
  * CONFIG + QUALITY    *
- **********************/
+ ***********************/
 
 const DEFAULT_CONFIG = {
   waveColorLight: "#4d4d4d",
@@ -81,9 +81,9 @@ const storedConfig = loadStoredConfig();
 const config = { ...DEFAULT_CONFIG, ...authorConfig, ...storedConfig };
 let effectiveTier = resolveTier(config.quality);
 
-/*******************************
+/********************************
  * XMB WAVE BACKGROUND BEHAVIOR *
- *******************************/
+ ********************************/
 
 const body = document.body;
 
@@ -297,9 +297,9 @@ function recompileShader() {
   pushAllUniforms();
 }
 
-/******************
+/*******************
  * UNIFORM PUSH    *
- ******************/
+ *******************/
 
 function pushColorUniform() {
   const isDark = body.classList.contains("dark-mode");
@@ -327,9 +327,9 @@ function pushAllUniforms() {
   pushResolutionUniform();
 }
 
-/******************
+/*******************
  * RENDER LOOP     *
- ******************/
+ *******************/
 
 let lastFrameMs = 0;
 let frameBudget = 1000 / QUALITY_TIERS[effectiveTier].targetFps;
@@ -415,9 +415,9 @@ function applyTier(tierName) {
   lastFrameMs = 0;
 }
 
-/******************
+/*******************
  * VISIBILITY      *
- ******************/
+ *******************/
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
@@ -432,9 +432,9 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-/******************
+/*******************
  * SETTINGS PANEL  *
- ******************/
+ *******************/
 
 let settingsPanel = null;
 let settingsBtn = null;
@@ -540,9 +540,9 @@ function syncUIFromConfig() {
   syncBgPicker();
 }
 
-/******************
+/*******************
  * CONFIG UPDATE   *
- ******************/
+ *******************/
 
 let saveTimer = 0;
 function scheduleSave() {
@@ -578,11 +578,11 @@ function updateConfig(partial) {
   syncUIFromConfig();
 }
 
-/******************
+/*******************
  * DEBUG INDICATOR *
- ******************/
+ *******************/
 
-// Enabled with ?debug=1 in the URL — handy for verifying the FPS watchdog.
+// Enabled with ?debug=1 in the URL, handy for verifying the FPS watchdog.
 let debugIndicator = null;
 
 function maybeBuildDebugIndicator() {
@@ -598,9 +598,9 @@ function updateDebugIndicator(avgFps) {
   debugIndicator.textContent = `FPS ${avgFps.toFixed(0)} | tier ${effectiveTier} | q ${config.quality}`;
 }
 
-/******************
+/*******************
  * PUBLIC API      *
- ******************/
+ *******************/
 
 window.XMBWave = {
   updateConfig,
@@ -609,9 +609,9 @@ window.XMBWave = {
   getDefaults: () => ({ ...DEFAULT_CONFIG }),
 };
 
-/***********************
+/************************
  * MODE TOGGLE BEHAVIOR *
- ***********************/
+ ************************/
 
 const toggleModeBtn = document.getElementById("toggle-mode-btn");
 
@@ -650,9 +650,9 @@ function applyMode(mode) {
   syncWaveColorPicker();
 }
 
-/******************
+/*******************
  * BOOT            *
- ******************/
+ *******************/
 
 if (context) {
   initializeWebGL();

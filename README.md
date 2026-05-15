@@ -74,11 +74,11 @@ The wave reads its settings from `window.XMBWaveConfig`. Set defaults before loa
 | `waveColorDark`  | `#ffffff` | any CSS hex color                  | Wave color used while in dark mode        |
 | `bgColorLight`   | `#f5f5f5` | any CSS hex color                  | Background color used while in light mode |
 | `bgColorDark`    | `#020408` | any CSS hex color                  | Background color used while in dark mode  |
-| `speed`          |   `1.0`   | `0.1` – `3.0`                      | Global animation speed multiplier         |
-| `waveHeight`     |   `1.0`   | `0.1` – `2.0`                      | Global amplitude multiplier               |
+| `speed`          |   `1.0`   | `0.1` - `3.0`                      | Global animation speed multiplier         |
+| `waveHeight`     |   `1.0`   | `0.1` - `2.0`                      | Global amplitude multiplier               |
 | `quality`        | `"auto"`  | `auto` / `low` / `medium` / `high` | Performance tier (see below)              |
 
-The background and wave color pickers in the settings panel always target the _currently active_ mode — toggle light/dark to recolor the other.
+The background and wave color pickers in the settings panel always target the _currently active_ mode, toggle light/dark to recolor the other.
 
 ### Author-set defaults (before script loads)
 
@@ -116,9 +116,9 @@ The shader is rendered in one of three quality tiers; `quality: "auto"` picks on
 Additional optimisations are always on:
 
 - **DPR-aware sizing** so the GPU isn't rendering 4× pixels on Retina displays for the low/medium tiers.
-- **FPS cap** in the render loop — frames are skipped to hit the tier's target.
+- **FPS cap** in the render loop, frames are skipped to hit the tier's target.
 - **Auto-downgrade watchdog**: with `quality: "auto"`, a sustained drop below 70% of target FPS for 3s steps the tier down one notch (one-way, no oscillation).
-- **Visibility pause** — `requestAnimationFrame` work stops while the tab is hidden, with `uTime` offset so the animation doesn't jump on return.
+- **Visibility pause**: `requestAnimationFrame` work stops while the tab is hidden, with `uTime` offset so the animation doesn't jump on return.
 - **Debounced resize** via a coalesced `requestAnimationFrame`.
 
 Append `?debug=1` to the URL to show a live FPS / tier indicator.
