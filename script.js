@@ -3,10 +3,8 @@
  *********************/
 
 const responsiveWarning = document.getElementById("responsive-warning");
-// "true" if the site is optimized for responsive design, "false" if not.
 const responsiveDesign = true;
 
-// Show mobile warning if the user is on mobile and responsive-design is false.
 if (!responsiveDesign && window.innerWidth <= 768) {
   responsiveWarning.classList.add("show");
 }
@@ -16,12 +14,13 @@ if (!responsiveDesign && window.innerWidth <= 768) {
  **********************/
 
 const DEFAULT_CONFIG = {
-  color: "#4d4d4d", // matches the original vec3(0.3)
+  color: "#4d4d4d",
   bgColorLight: "#f5f5f5",
   bgColorDark: "#020408",
   speed: 1.0,
   waveHeight: 1.0,
-  quality: "auto", // "auto" | "low" | "medium" | "high"
+  // "auto" | "low" | "medium" | "high"
+  quality: "auto",
 };
 
 const QUALITY_TIERS = {
@@ -87,7 +86,6 @@ let effectiveTier = resolveTier(config.quality);
 
 const body = document.body;
 
-// Get canvas element and WebGL context.
 const canvas = document.getElementById("webgl-canvas");
 const context = canvas.getContext("webgl");
 
@@ -116,7 +114,10 @@ function resizeCanvas() {
   const dpr = Math.min(window.devicePixelRatio || 1, tier.dprCap);
   canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
   canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
-  if (context) context.viewport(0, 0, canvas.width, canvas.height);
+  if (context) {
+    context.viewport(0, 0, canvas.width, canvas.height);
+    if (resolutionUniformLocation) pushResolutionUniform();
+  }
 }
 
 let resizeScheduled = false;
@@ -240,6 +241,8 @@ function buildProgramForTier(tierName) {
   context.attachShader(program, vertexShader);
   context.attachShader(program, fs);
   context.linkProgram(program);
+  // Flag for deletion now; GL frees it when the owning program is deleted.
+  context.deleteShader(fs);
 
   if (!context.getProgramParameter(program, context.LINK_STATUS)) {
     console.error("Link error:", context.getProgramInfoLog(program));
@@ -263,7 +266,6 @@ function bindQuadAttribute() {
   context.vertexAttribPointer(positionAttribLocation, 2, context.FLOAT, false, 0, 0);
 }
 
-// Setup shaders, buffers, and bind everything for the first time.
 function initializeWebGL() {
   vertexShader = compileShader(vertexShaderSource, context.VERTEX_SHADER);
   shaderProgram = buildProgramForTier(effectiveTier);
@@ -299,25 +301,27 @@ function recompileShader() {
  ******************/
 
 function pushColorUniform() {
-  if (!baseColorUniformLocation) return;
   const [r, g, b] = hexToRgb(config.color);
   context.uniform3f(baseColorUniformLocation, r, g, b);
 }
 
 function pushSpeedUniform() {
-  if (!speedMulUniformLocation) return;
   context.uniform1f(speedMulUniformLocation, config.speed);
 }
 
 function pushAmplitudeUniform() {
-  if (!amplitudeMulUniformLocation) return;
   context.uniform1f(amplitudeMulUniformLocation, config.waveHeight);
+}
+
+function pushResolutionUniform() {
+  context.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
 }
 
 function pushAllUniforms() {
   pushColorUniform();
   pushSpeedUniform();
   pushAmplitudeUniform();
+  pushResolutionUniform();
 }
 
 /******************
@@ -331,9 +335,22 @@ let pauseStartMs = 0;
 // Offset subtracted from timeMs so uTime doesn't jump after a pause.
 let pauseAccumulatedMs = 0;
 
-const fpsHistory = [];
+const fpsTimes = [];
+const fpsDeltas = [];
+let fpsSumDelta = 0;
 const FPS_HISTORY_MS = 2000;
 let downgradeWindowStart = 0;
+
+function recordFrameSample(timeMs, delta) {
+  fpsTimes.push(timeMs);
+  fpsDeltas.push(delta);
+  fpsSumDelta += delta;
+  while (fpsTimes.length && timeMs - fpsTimes[0] > FPS_HISTORY_MS) {
+    fpsTimes.shift();
+    fpsSumDelta -= fpsDeltas.shift();
+  }
+  return fpsTimes.length ? 1000 / (fpsSumDelta / fpsTimes.length) : 0;
+}
 
 function renderFrame(timeMs) {
   requestAnimationFrame(renderFrame);
@@ -345,29 +362,23 @@ function renderFrame(timeMs) {
   if (lastFrameMs && delta < frameBudget * 0.9) return;
 
   if (lastFrameMs) {
-    fpsHistory.push({ time: timeMs, delta });
-    while (fpsHistory.length && timeMs - fpsHistory[0].time > FPS_HISTORY_MS) {
-      fpsHistory.shift();
-    }
-    maybeAutoDowngrade(timeMs);
-    if (debugIndicator) updateDebugIndicator();
+    const avgFps = recordFrameSample(timeMs, delta);
+    maybeAutoDowngrade(timeMs, avgFps);
+    if (debugIndicator) updateDebugIndicator(avgFps);
   }
   lastFrameMs = timeMs;
 
   const animMs = timeMs - pauseAccumulatedMs;
   context.clear(context.COLOR_BUFFER_BIT);
   context.uniform1f(timeUniformLocation, animMs * 0.001);
-  context.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
   context.drawArrays(context.TRIANGLE_STRIP, 0, 4);
 }
 
 // One-way: only auto-downgrades on sustained slowness; never re-upgrades.
-function maybeAutoDowngrade(timeMs) {
+function maybeAutoDowngrade(timeMs, avgFps) {
   if (config.quality !== "auto") return;
-  if (fpsHistory.length < 20) return;
+  if (fpsTimes.length < 20) return;
 
-  const avgDelta = fpsHistory.reduce((s, e) => s + e.delta, 0) / fpsHistory.length;
-  const avgFps = 1000 / avgDelta;
   const target = QUALITY_TIERS[effectiveTier].targetFps;
 
   if (avgFps < target * 0.7) {
@@ -394,7 +405,9 @@ function applyTier(tierName) {
   frameBudget = 1000 / QUALITY_TIERS[tierName].targetFps;
   recompileShader();
   resizeCanvas();
-  fpsHistory.length = 0;
+  fpsTimes.length = 0;
+  fpsDeltas.length = 0;
+  fpsSumDelta = 0;
   downgradeWindowStart = 0;
   lastFrameMs = 0;
 }
@@ -474,18 +487,22 @@ function buildSettingsPanel() {
     settingsBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
   });
 
-  settingsRefs.color.addEventListener("input", (e) => updateConfig({ color: e.target.value }));
-  settingsRefs.bgColor.addEventListener("input", (e) => {
-    const key = body.classList.contains("dark-mode") ? "bgColorDark" : "bgColorLight";
-    updateConfig({ [key]: e.target.value });
-  });
-  settingsRefs.speed.addEventListener("input", (e) =>
-    updateConfig({ speed: parseFloat(e.target.value) }),
-  );
-  settingsRefs.waveHeight.addEventListener("input", (e) =>
-    updateConfig({ waveHeight: parseFloat(e.target.value) }),
-  );
-  settingsRefs.quality.addEventListener("change", (e) => updateConfig({ quality: e.target.value }));
+  const inputs = [
+    { ref: "color", evt: "input", make: (v) => ({ color: v }) },
+    {
+      ref: "bgColor",
+      evt: "input",
+      make: (v) => ({
+        [body.classList.contains("dark-mode") ? "bgColorDark" : "bgColorLight"]: v,
+      }),
+    },
+    { ref: "speed", evt: "input", make: (v) => ({ speed: parseFloat(v) }) },
+    { ref: "waveHeight", evt: "input", make: (v) => ({ waveHeight: parseFloat(v) }) },
+    { ref: "quality", evt: "change", make: (v) => ({ quality: v }) },
+  ];
+  for (const { ref, evt, make } of inputs) {
+    settingsRefs[ref].addEventListener(evt, (e) => updateConfig(make(e.target.value)));
+  }
   settingsRefs.reset.addEventListener("click", () => updateConfig({ ...DEFAULT_CONFIG }));
 }
 
@@ -504,22 +521,36 @@ function syncUIFromConfig() {
  * CONFIG UPDATE   *
  ******************/
 
-function updateConfig(partial) {
-  const prevQuality = config.quality;
-  Object.assign(config, partial);
-  saveStoredConfig(config);
+let saveTimer = 0;
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = 0;
+    saveStoredConfig(config);
+  }, 150);
+}
 
-  if (Object.prototype.hasOwnProperty.call(partial, "color")) pushColorUniform();
-  if (Object.prototype.hasOwnProperty.call(partial, "speed")) pushSpeedUniform();
-  if (Object.prototype.hasOwnProperty.call(partial, "waveHeight")) pushAmplitudeUniform();
-  if (
-    Object.prototype.hasOwnProperty.call(partial, "bgColorLight") ||
-    Object.prototype.hasOwnProperty.call(partial, "bgColorDark")
-  ) {
-    applyBgColor();
+const CONFIG_EFFECTS = [
+  { keys: ["color"], run: pushColorUniform },
+  { keys: ["speed"], run: pushSpeedUniform },
+  { keys: ["waveHeight"], run: pushAmplitudeUniform },
+  { keys: ["bgColorLight", "bgColorDark"], run: applyBgColor },
+  { keys: ["quality"], run: () => applyTier(resolveTier(config.quality)) },
+];
+
+function updateConfig(partial) {
+  const changed = {};
+  for (const k of Object.keys(partial)) {
+    if (partial[k] !== config[k]) {
+      config[k] = partial[k];
+      changed[k] = true;
+    }
   }
-  if (Object.prototype.hasOwnProperty.call(partial, "quality") && partial.quality !== prevQuality) {
-    applyTier(resolveTier(config.quality));
+  if (Object.keys(changed).length === 0) return;
+
+  scheduleSave();
+  for (const { keys, run } of CONFIG_EFFECTS) {
+    if (keys.some((k) => changed[k])) run();
   }
   syncUIFromConfig();
 }
@@ -540,10 +571,7 @@ function maybeBuildDebugIndicator() {
   document.body.appendChild(debugIndicator);
 }
 
-function updateDebugIndicator() {
-  if (!fpsHistory.length) return;
-  const avgDelta = fpsHistory.reduce((s, e) => s + e.delta, 0) / fpsHistory.length;
-  const avgFps = 1000 / avgDelta;
+function updateDebugIndicator(avgFps) {
   debugIndicator.textContent = `FPS ${avgFps.toFixed(0)} | tier ${effectiveTier} | q ${config.quality}`;
 }
 
@@ -562,9 +590,7 @@ window.XMBWave = {
  * MODE TOGGLE BEHAVIOR *
  ***********************/
 
-// Get elements that change with the mode.
 const toggleModeBtn = document.getElementById("toggle-mode-btn");
-const portfolioLink = document.getElementById("portfolio-link");
 
 // The active mode's bg color drives both the body bg and the canvas clearColor
 // so the wave sits over an opaque, fully-controllable background.
@@ -588,22 +614,12 @@ function syncBgPicker() {
   }
 }
 
-// Function to apply mode.
 function applyMode(mode) {
   body.classList.remove("light-mode", "dark-mode");
   body.classList.add(mode);
 
-  if (mode === "dark-mode") {
-    toggleModeBtn.style.color = "rgb(245, 245, 245)";
-    toggleModeBtn.innerHTML = '<i class="bi bi-sun-fill"></i>';
-    if (settingsBtn) settingsBtn.style.color = "rgb(245, 245, 245)";
-    portfolioLink.style.color = "rgb(245, 245, 245)";
-  } else {
-    toggleModeBtn.style.color = "rgb(2, 4, 8)";
-    toggleModeBtn.innerHTML = '<i class="bi bi-moon-stars-fill"></i>';
-    if (settingsBtn) settingsBtn.style.color = "rgb(2, 4, 8)";
-    portfolioLink.style.color = "rgb(2, 4, 8)";
-  }
+  const icon = mode === "dark-mode" ? "bi-sun-fill" : "bi-moon-stars-fill";
+  toggleModeBtn.innerHTML = `<i class="bi ${icon}"></i>`;
 
   applyBgColor();
   syncBgPicker();
@@ -630,7 +646,6 @@ if (context) {
   requestAnimationFrame(renderFrame);
 }
 
-// Toggle mode and save preference.
 toggleModeBtn.addEventListener("click", () => {
   const newMode = body.classList.contains("light-mode") ? "dark-mode" : "light-mode";
   applyMode(newMode);

@@ -59,7 +59,7 @@ body.dark-mode #toggle-mode-btn:hover {
 
 a {
   text-decoration: none;
-  color: var(--dark-color);
+  color: inherit;
 }
 
 /* MAIN */
