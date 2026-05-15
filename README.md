@@ -68,22 +68,28 @@ The wave reads its settings from `window.XMBWaveConfig`. Set defaults before loa
 
 ### Defaults
 
-| Setting        |  Default  | Range / values                     | Description                               |
-| :------------- | :-------: | :--------------------------------- | :---------------------------------------- |
-| `color`        | `#4d4d4d` | any CSS hex color                  | Base color shared by all wave layers      |
-| `bgColorLight` | `#f5f5f5` | any CSS hex color                  | Background color used while in light mode |
-| `bgColorDark`  | `#020408` | any CSS hex color                  | Background color used while in dark mode  |
-| `speed`        |   `1.0`   | `0.1` – `3.0`                      | Global animation speed multiplier         |
-| `waveHeight`   |   `1.0`   | `0.1` – `2.0`                      | Global amplitude multiplier               |
-| `quality`      | `"auto"`  | `auto` / `low` / `medium` / `high` | Performance tier (see below)              |
+| Setting          |  Default  | Range / values                     | Description                               |
+| :--------------- | :-------: | :--------------------------------- | :---------------------------------------- |
+| `waveColorLight` | `#4d4d4d` | any CSS hex color                  | Wave color used while in light mode       |
+| `waveColorDark`  | `#ffffff` | any CSS hex color                  | Wave color used while in dark mode        |
+| `bgColorLight`   | `#f5f5f5` | any CSS hex color                  | Background color used while in light mode |
+| `bgColorDark`    | `#020408` | any CSS hex color                  | Background color used while in dark mode  |
+| `speed`          |   `1.0`   | `0.1` – `3.0`                      | Global animation speed multiplier         |
+| `waveHeight`     |   `1.0`   | `0.1` – `2.0`                      | Global amplitude multiplier               |
+| `quality`        | `"auto"`  | `auto` / `low` / `medium` / `high` | Performance tier (see below)              |
 
-The background picker in the settings panel always targets the _currently active_ mode — toggle light/dark to recolor the other.
+The background and wave color pickers in the settings panel always target the _currently active_ mode — toggle light/dark to recolor the other.
 
 ### Author-set defaults (before script loads)
 
 ```html
 <script>
-  window.XMBWaveConfig = { color: "#00aaff", speed: 1.5, waveHeight: 0.8 };
+  window.XMBWaveConfig = {
+    waveColorLight: "#3d3d3d",
+    waveColorDark: "#00aaff",
+    speed: 1.5,
+    waveHeight: 0.8,
+  };
 </script>
 <script src="./script.js" defer></script>
 ```
@@ -91,7 +97,7 @@ The background picker in the settings panel always targets the _currently active
 ### Runtime API
 
 ```js
-XMBWave.updateConfig({ color: "#ff5500", speed: 2.0 });
+XMBWave.updateConfig({ waveColorDark: "#ff5500", speed: 2.0 });
 XMBWave.getConfig(); // current merged config
 XMBWave.getEffectiveTier(); // resolved tier in use: "low" | "medium" | "high"
 XMBWave.getDefaults();
