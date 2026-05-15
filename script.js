@@ -14,7 +14,8 @@ if (!responsiveDesign && window.innerWidth <= 768) {
  **********************/
 
 const DEFAULT_CONFIG = {
-  color: "#4d4d4d",
+  waveColorLight: "#4d4d4d",
+  waveColorDark: "#ffffff",
   bgColorLight: "#f5f5f5",
   bgColorDark: "#020408",
   speed: 1.0,
@@ -301,7 +302,9 @@ function recompileShader() {
  ******************/
 
 function pushColorUniform() {
-  const [r, g, b] = hexToRgb(config.color);
+  const isDark = body.classList.contains("dark-mode");
+  const waveColor = isDark ? config.waveColorDark : config.waveColorLight;
+  const [r, g, b] = hexToRgb(waveColor);
   context.uniform3f(baseColorUniformLocation, r, g, b);
 }
 
@@ -444,7 +447,7 @@ function buildSettingsPanel() {
   settingsPanel.id = "settings-panel";
   settingsPanel.innerHTML = `
 		<div class="settings-row">
-			<label for="settings-color">Wave color</label>
+			<label for="settings-color">Wave color <span id="settings-color-mode"></span></label>
 			<input type="color" id="settings-color">
 		</div>
 		<div class="settings-row">
@@ -473,6 +476,7 @@ function buildSettingsPanel() {
   document.querySelector("main").appendChild(settingsPanel);
 
   settingsRefs.color = document.getElementById("settings-color");
+  settingsRefs.colorMode = document.getElementById("settings-color-mode");
   settingsRefs.bgColor = document.getElementById("settings-bg-color");
   settingsRefs.bgMode = document.getElementById("settings-bg-mode");
   settingsRefs.speed = document.getElementById("settings-speed");
@@ -488,7 +492,13 @@ function buildSettingsPanel() {
   });
 
   const inputs = [
-    { ref: "color", evt: "input", make: (v) => ({ color: v }) },
+    {
+      ref: "color",
+      evt: "input",
+      make: (v) => ({
+        [body.classList.contains("dark-mode") ? "waveColorDark" : "waveColorLight"]: v,
+      }),
+    },
     {
       ref: "bgColor",
       evt: "input",
@@ -510,9 +520,18 @@ function buildSettingsPanel() {
   settingsRefs.reset.addEventListener("click", () => updateConfig({ ...DEFAULT_CONFIG }));
 }
 
+function syncWaveColorPicker() {
+  if (!settingsRefs.color) return;
+  const isDark = body.classList.contains("dark-mode");
+  settingsRefs.color.value = isDark ? config.waveColorDark : config.waveColorLight;
+  if (settingsRefs.colorMode) {
+    settingsRefs.colorMode.textContent = isDark ? "(dark)" : "(light)";
+  }
+}
+
 function syncUIFromConfig() {
   if (!settingsRefs.color) return;
-  settingsRefs.color.value = config.color;
+  syncWaveColorPicker();
   settingsRefs.speed.value = String(config.speed);
   settingsRefs.speedVal.textContent = `${Number(config.speed).toFixed(2)}x`;
   settingsRefs.waveHeight.value = String(config.waveHeight);
@@ -626,7 +645,9 @@ function applyMode(mode) {
   toggleModeBtn.innerHTML = `<i class="bi ${icon}"></i>`;
 
   applyBgColor();
+  pushColorUniform();
   syncBgPicker();
+  syncWaveColorPicker();
 }
 
 /******************
@@ -644,17 +665,6 @@ syncUIFromConfig();
 let savedMode = localStorage.getItem("mode");
 if (savedMode === null) savedMode = "light-mode";
 applyMode(savedMode);
-
-if (context) {
-  pushAllUniforms();
-  requestAnimationFrame(renderFrame);
-}
-
-toggleModeBtn.addEventListener("click", () => {
-  const newMode = body.classList.contains("light-mode") ? "dark-mode" : "light-mode";
-  applyMode(newMode);
-  localStorage.setItem("mode", newMode);
-});
 
 if (context) {
   pushAllUniforms();
