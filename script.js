@@ -497,7 +497,11 @@ function buildSettingsPanel() {
       }),
     },
     { ref: "speed", evt: "input", make: (v) => ({ speed: parseFloat(v) }) },
-    { ref: "waveHeight", evt: "input", make: (v) => ({ waveHeight: parseFloat(v) }) },
+    {
+      ref: "waveHeight",
+      evt: "input",
+      make: (v) => ({ waveHeight: parseFloat(v) }),
+    },
     { ref: "quality", evt: "change", make: (v) => ({ quality: v }) },
   ];
   for (const { ref, evt, make } of inputs) {
@@ -531,7 +535,7 @@ function scheduleSave() {
 }
 
 const CONFIG_EFFECTS = [
-  { keys: ["color"], run: pushColorUniform },
+  { keys: ["waveColorLight", "waveColorDark"], run: pushColorUniform },
   { keys: ["speed"], run: pushSpeedUniform },
   { keys: ["waveHeight"], run: pushAmplitudeUniform },
   { keys: ["bgColorLight", "bgColorDark"], run: applyBgColor },
@@ -640,6 +644,17 @@ syncUIFromConfig();
 let savedMode = localStorage.getItem("mode");
 if (savedMode === null) savedMode = "light-mode";
 applyMode(savedMode);
+
+if (context) {
+  pushAllUniforms();
+  requestAnimationFrame(renderFrame);
+}
+
+toggleModeBtn.addEventListener("click", () => {
+  const newMode = body.classList.contains("light-mode") ? "dark-mode" : "light-mode";
+  applyMode(newMode);
+  localStorage.setItem("mode", newMode);
+});
 
 if (context) {
   pushAllUniforms();
